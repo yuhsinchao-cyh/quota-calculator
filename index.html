@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大學各學制名額轉換計算機</title>
+  <!-- 引入 Tailwind CSS 進行美化 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen py-10 px-4 font-sans">
+  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6 sm:p-8">
+    <h1 class="text-2xl font-bold text-slate-800 text-center mb-6">大學各學制名額轉換計算機</h1>
+
+    <div class="space-y-5">
+      <!-- 轉出學制 -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">轉出學制（扣減名額）</label>
+        <select id="sourceSelect" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <option value="">-- 請選擇轉出學制 --</option>
+        </select>
+      </div>
+
+      <!-- 轉入學制 -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">轉入學制（新增名額）</label>
+        <select id="targetSelect" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" disabled>
+          <option value="">-- 請先選擇轉出學制 --</option>
+        </select>
+      </div>
+
+      <!-- 轉出名額數量 -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">欲轉出的名額數</label>
+        <input type="number" id="inputQuota" min="1" placeholder="請輸入整數名額（例如：10）" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      </div>
+
+      <!-- 計算結果區域 -->
+      <div id="resultBox" class="mt-6 p-4 rounded-lg bg-slate-50 border border-slate-200 hidden">
+        <div class="text-sm text-gray-600 mb-2">
+          <span>轉換允許狀態：</span>
+          <span id="allowStatus" class="font-bold"></span>
+        </div>
+        <div class="text-sm text-gray-600 mb-2">
+          <span>轉換權重（扣 1 換 X）：</span>
+          <span id="weightVal" class="font-bold text-gray-800">-</span>
+        </div>
+        <div class="text-lg font-bold text-blue-700 mt-3 pt-3 border-t border-gray-200">
+          <span>可換算名額：</span>
+          <span id="calcResult" class="text-2xl text-blue-600">-</span> 人
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 依據表格建置轉換資料規則
+    const conversionData = [
+      // 五專部
+      { source: "五專部", target: "二專部", weight: 2.5, allowed: true },
+      { source: "五專部", target: "四技日間部", weight: null, allowed: false },
+      { source: "五專部", target: "二技日間部", weight: null, allowed: false },
+      { source: "五專部", target: "日間碩士班", weight: null, allowed: false },
+      { source: "五專部", target: "博士班", weight: null, allowed: false },
+      { source: "五專部", target: "二專進修部", weight: 5, allowed: true },
+      { source: "五專部", target: "四技進修部", weight: 2.5, allowed: true },
+      { source: "五專部", target: "二技進修部", weight: null, allowed: false },
+      { source: "五專部", target: "碩士在職專班", weight: null, allowed: false },
+
+      // 二專部
+      { source: "二專部", target: "五專部", weight: 0.4, allowed: true },
+      { source: "二專部", target: "四技日間部", weight: null, allowed: false },
+      { source: "二專部", target: "二技日間部", weight: 1, allowed: true },
+      { source: "二專部", target: "日間碩士班", weight: null, allowed: false },
+      { source: "二專部", target: "博士班", weight: null, allowed: false },
+      { source: "二專部", target: "二專進修部", weight: 2, allowed: true },
+      { source: "二專部", target: "四技進修部", weight: 1, allowed: true },
+      { source: "二專部", target: "二技進修部", weight: 2, allowed: true },
+      { source: "二專部", target: "碩士在職專班", weight: null, allowed: false },
+
+      // 四技日間部
+      { source: "四技日間部", target: "五專部", weight: 0.8, allowed: true },
+      { source: "四技日間部", target: "二專部", weight: 2, allowed: true },
+      { source: "四技日間部", target: "二技日間部", weight: 2, allowed: true },
+      { source: "四技日間部", target: "日間碩士班", weight: 0.5, allowed: true },
+      { source: "四技日間部", target: "博士班", weight: 0.34, allowed: true },
+      { source: "四技日間部", target: "二專進修部", weight: 4, allowed: true },
+      { source: "四技日間部", target: "四技進修部", weight: 2, allowed: true },
+      { source: "四技日間部", target: "二技進修部", weight: 4, allowed: true },
+      { source: "四技日間部", target: "碩士在職專班", weight: 0.63, allowed: true }
+    ];
+
+    const sourceSelect = document.getElementById('sourceSelect');
+    const targetSelect = document.getElementById('targetSelect');
+    const inputQuota = document.getElementById('inputQuota');
+    const resultBox = document.getElementById('resultBox');
+    const allowStatus = document.getElementById('allowStatus');
+    const weightVal = document.getElementById('weightVal');
+    const calcResult = document.getElementById('calcResult');
+
+    // 初始化轉出選單
+    const sourceList = [...new Set(conversionData.map(item => item.source))];
+    sourceList.forEach(src => {
+      const opt = document.createElement('option');
+      opt.value = src;
+      opt.textContent = src;
+      sourceSelect.appendChild(opt);
+    });
+
+    // 當轉出學制改變時
+    sourceSelect.addEventListener('change', () => {
+      const selectedSource = sourceSelect.value;
+      targetSelect.innerHTML = '<option value="">-- 請選擇轉入學制 --</option>';
+      
+      if (!selectedSource) {
+        targetSelect.disabled = true;
+        resultBox.classList.add('hidden');
+        return;
+      }
+
+      const targets = conversionData.filter(item => item.source === selectedSource);
+      targets.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.target;
+        opt.textContent = `${t.target} (${t.allowed ? '可轉換' : '不可轉換'})`;
+        targetSelect.appendChild(opt);
+      });
+
+      targetSelect.disabled = false;
+      calculate();
+    });
+
+    // 監聽變更事件以即時計算
+    targetSelect.addEventListener('change', calculate);
+    inputQuota.addEventListener('input', calculate);
+
+    function calculate() {
+      const src = sourceSelect.value;
+      const tgt = targetSelect.value;
+      const quota = parseFloat(inputQuota.value);
+
+      if (!src || !tgt) {
+        resultBox.classList.add('hidden');
+        return;
+      }
+
+      const rule = conversionData.find(item => item.source === src && item.target === tgt);
+      resultBox.classList.remove('hidden');
+
+      if (!rule || !rule.allowed) {
+        allowStatus.textContent = "不允許轉換";
+        allowStatus.className = "font-bold text-red-600";
+        weightVal.textContent = "-";
+        calcResult.textContent = "0";
+        return;
+      }
+
+      allowStatus.textContent = "允許轉換";
+      allowStatus.className = "font-bold text-green-600";
+      weightVal.textContent = rule.weight;
+
+      if (!isNaN(quota) && quota > 0) {
+        // 計算轉換結果（可根據學校需求選擇是否要 Math.floor 無條件捨去小數點）
+        const converted = (quota * rule.weight).toFixed(2);
+        calcResult.textContent = converted;
+      } else {
+        calcResult.textContent = "0";
+      }
+    }
+  </script>
+</body>
+</html>
