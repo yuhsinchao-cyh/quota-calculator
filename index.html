@@ -4,17 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>大學各學制名額轉換計算機</title>
-  <!-- 引入 Tailwind CSS 進行美化 -->
+  <!-- 引入 Tailwind CSS 進行介面美化 -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen py-10 px-4 font-sans">
   <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6 sm:p-8">
-    <h1 class="text-2xl font-bold text-slate-800 text-center mb-6">大學各學制名額轉換計算機</h1>
+    <h1 class="text-2xl font-bold text-slate-800 text-center mb-2">大學各學制名額轉換計算機</h1>
+    <p class="text-xs text-gray-500 text-center mb-6">依據《大學總量發展規模與資源條件標準》附表六名額轉換對照表建置</p>
 
     <div class="space-y-5">
       <!-- 轉出學制 -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">轉出學制（扣減名額）</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">1. 轉出學制（扣減名額）</label>
         <select id="sourceSelect" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
           <option value="">-- 請選擇轉出學制 --</option>
         </select>
@@ -22,7 +23,7 @@
 
       <!-- 轉入學制 -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">轉入學制（新增名額）</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">2. 轉入學制（新增名額）</label>
         <select id="targetSelect" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" disabled>
           <option value="">-- 請先選擇轉出學制 --</option>
         </select>
@@ -30,63 +31,124 @@
 
       <!-- 轉出名額數量 -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">欲轉出的名額數</label>
-        <input type="number" id="inputQuota" min="1" placeholder="請輸入整數名額（例如：10）" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        <label class="block text-sm font-medium text-gray-700 mb-1">3. 欲轉出的名額數</label>
+        <input type="number" id="inputQuota" min="1" placeholder="請輸入欲扣減的名額數（例如：10）" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
       </div>
 
       <!-- 計算結果區域 -->
-      <div id="resultBox" class="mt-6 p-4 rounded-lg bg-slate-50 border border-slate-200 hidden">
-        <div class="text-sm text-gray-600 mb-2">
+      <div id="resultBox" class="mt-6 p-5 rounded-lg bg-slate-50 border border-slate-200 hidden">
+        <div class="flex justify-between items-center text-sm text-gray-600 mb-2 pb-2 border-b border-gray-200">
           <span>轉換允許狀態：</span>
           <span id="allowStatus" class="font-bold"></span>
         </div>
-        <div class="text-sm text-gray-600 mb-2">
+        <div class="flex justify-between items-center text-sm text-gray-600 mb-3 pb-2 border-b border-gray-200">
           <span>轉換權重（扣 1 換 X）：</span>
           <span id="weightVal" class="font-bold text-gray-800">-</span>
         </div>
-        <div class="text-lg font-bold text-blue-700 mt-3 pt-3 border-t border-gray-200">
-          <span>可換算名額：</span>
-          <span id="calcResult" class="text-2xl text-blue-600">-</span> 人
+        
+        <div class="mt-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <div class="text-sm text-blue-800 mb-1">精確換算名額：<span id="rawResult" class="font-bold">-</span> 人</div>
+          <div class="text-xl font-bold text-blue-900 mt-2">
+            法定最終名額 (無條件捨去)：<span id="floorResult" class="text-3xl text-blue-600">-</span> 人
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // 依據表格建置轉換資料規則
+    // 完整 90 筆學制名額轉換對照表資料 (自動由 rules_conversion.xlsx 匯入)
     const conversionData = [
-      // 五專部
-      { source: "五專部", target: "二專部", weight: 2.5, allowed: true },
-      { source: "五專部", target: "四技日間部", weight: null, allowed: false },
-      { source: "五專部", target: "二技日間部", weight: null, allowed: false },
-      { source: "五專部", target: "日間碩士班", weight: null, allowed: false },
-      { source: "五專部", target: "博士班", weight: null, allowed: false },
-      { source: "五專部", target: "二專進修部", weight: 5, allowed: true },
-      { source: "五專部", target: "四技進修部", weight: 2.5, allowed: true },
-      { source: "五專部", target: "二技進修部", weight: null, allowed: false },
-      { source: "五專部", target: "碩士在職專班", weight: null, allowed: false },
-
-      // 二專部
-      { source: "二專部", target: "五專部", weight: 0.4, allowed: true },
-      { source: "二專部", target: "四技日間部", weight: null, allowed: false },
-      { source: "二專部", target: "二技日間部", weight: 1, allowed: true },
-      { source: "二專部", target: "日間碩士班", weight: null, allowed: false },
-      { source: "二專部", target: "博士班", weight: null, allowed: false },
-      { source: "二專部", target: "二專進修部", weight: 2, allowed: true },
-      { source: "二專部", target: "四技進修部", weight: 1, allowed: true },
-      { source: "二專部", target: "二技進修部", weight: 2, allowed: true },
-      { source: "二專部", target: "碩士在職專班", weight: null, allowed: false },
-
-      // 四技日間部
-      { source: "四技日間部", target: "五專部", weight: 0.8, allowed: true },
-      { source: "四技日間部", target: "二專部", weight: 2, allowed: true },
-      { source: "四技日間部", target: "二技日間部", weight: 2, allowed: true },
-      { source: "四技日間部", target: "日間碩士班", weight: 0.5, allowed: true },
-      { source: "四技日間部", target: "博士班", weight: 0.34, allowed: true },
-      { source: "四技日間部", target: "二專進修部", weight: 4, allowed: true },
-      { source: "四技日間部", target: "四技進修部", weight: 2, allowed: true },
-      { source: "四技日間部", target: "二技進修部", weight: 4, allowed: true },
-      { source: "四技日間部", target: "碩士在職專班", weight: 0.63, allowed: true }
+      { "source": "五專部", "target": "二專部", "weight": 2.5, "allowed": true },
+      { "source": "五專部", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "五專部", "target": "二技日間部", "weight": null, "allowed": false },
+      { "source": "五專部", "target": "日間碩士班", "weight": null, "allowed": false },
+      { "source": "五專部", "target": "博士班", "weight": null, "allowed": false },
+      { "source": "五專部", "target": "二專進修部", "weight": 5.0, "allowed": true },
+      { "source": "五專部", "target": "四技進修部", "weight": 2.5, "allowed": true },
+      { "source": "五專部", "target": "二技進修部", "weight": null, "allowed": false },
+      { "source": "五專部", "target": "碩士在職專班", "weight": null, "allowed": false },
+      { "source": "二專部", "target": "五專部", "weight": 0.4, "allowed": true },
+      { "source": "二專部", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "二專部", "target": "二技日間部", "weight": 1.0, "allowed": true },
+      { "source": "二專部", "target": "日間碩士班", "weight": null, "allowed": false },
+      { "source": "二專部", "target": "博士班", "weight": null, "allowed": false },
+      { "source": "二專部", "target": "二專進修部", "weight": 2.0, "allowed": true },
+      { "source": "二專部", "target": "四技進修部", "weight": 1.0, "allowed": true },
+      { "source": "二專部", "target": "二技進修部", "weight": 2.0, "allowed": true },
+      { "source": "二專部", "target": "碩士在職專班", "weight": null, "allowed": false },
+      { "source": "四技日間部", "target": "五專部", "weight": 0.8, "allowed": true },
+      { "source": "四技日間部", "target": "二專部", "weight": 2.0, "allowed": true },
+      { "source": "四技日間部", "target": "二技日間部", "weight": 2.0, "allowed": true },
+      { "source": "四技日間部", "target": "日間碩士班", "weight": 0.5, "allowed": true },
+      { "source": "四技日間部", "target": "博士班", "weight": 0.34, "allowed": true },
+      { "source": "四技日間部", "target": "二專進修部", "weight": 4.0, "allowed": true },
+      { "source": "四技日間部", "target": "四技進修部", "weight": 2.0, "allowed": true },
+      { "source": "四技日間部", "target": "二技進修部", "weight": 4.0, "allowed": true },
+      { "source": "四技日間部", "target": "碩士在職專班", "weight": 0.63, "allowed": true },
+      { "source": "二技日間部", "target": "五專部", "weight": null, "allowed": false },
+      { "source": "二技日間部", "target": "二專部", "weight": 1.0, "allowed": true },
+      { "source": "二技日間部", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "二技日間部", "target": "日間碩士班", "weight": 0.25, "allowed": true },
+      { "source": "二技日間部", "target": "博士班", "weight": 0.17, "allowed": true },
+      { "source": "二技日間部", "target": "二專進修部", "weight": 2.0, "allowed": true },
+      { "source": "二技日間部", "target": "四技進修部", "weight": 1.0, "allowed": true },
+      { "source": "二技日間部", "target": "二技進修部", "weight": 2.0, "allowed": true },
+      { "source": "二技日間部", "target": "碩士在職專班", "weight": 0.32, "allowed": true },
+      { "source": "日間碩士班", "target": "五專部", "weight": null, "allowed": false },
+      { "source": "日間碩士班", "target": "二專部", "weight": null, "allowed": false },
+      { "source": "日間碩士班", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "日間碩士班", "target": "二技日間部", "weight": 4.0, "allowed": true },
+      { "source": "日間碩士班", "target": "博士班", "weight": 0.67, "allowed": true },
+      { "source": "日間碩士班", "target": "二專進修部", "weight": null, "allowed": false },
+      { "source": "日間碩士班", "target": "四技進修部", "weight": 4.0, "allowed": true },
+      { "source": "日間碩士班", "target": "二技進修部", "weight": 8.0, "allowed": true },
+      { "source": "日間碩士班", "target": "碩士在職專班", "weight": 1.25, "allowed": true },
+      { "source": "博士班", "target": "五專部", "weight": null, "allowed": false },
+      { "source": "博士班", "target": "二專部", "weight": null, "allowed": false },
+      { "source": "博士班", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "博士班", "target": "二技日間部", "weight": 6.0, "allowed": true },
+      { "source": "博士班", "target": "日間碩士班", "weight": 1.0, "allowed": true },
+      { "source": "博士班", "target": "二專進修部", "weight": null, "allowed": false },
+      { "source": "博士班", "target": "四技進修部", "weight": 6.0, "allowed": true },
+      { "source": "博士班", "target": "二技進修部", "weight": 12.0, "allowed": true },
+      { "source": "博士班", "target": "碩士在職專班", "weight": 1.88, "allowed": true },
+      { "source": "二專進修部", "target": "五專部", "weight": 0.2, "allowed": true },
+      { "source": "二專進修部", "target": "二專部", "weight": 0.5, "allowed": true },
+      { "source": "二專進修部", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "二專進修部", "target": "二技日間部", "weight": null, "allowed": false },
+      { "source": "二專進修部", "target": "日間碩士班", "weight": null, "allowed": false },
+      { "source": "二專進修部", "target": "博士班", "weight": null, "allowed": false },
+      { "source": "二專進修部", "target": "四技進修部", "weight": 0.5, "allowed": true },
+      { "source": "二專進修部", "target": "二技進修部", "weight": 1.0, "allowed": true },
+      { "source": "二專進修部", "target": "碩士在職專班", "weight": null, "allowed": false },
+      { "source": "四技進修部", "target": "五專部", "weight": 3.0, "allowed": true },
+      { "source": "四技進修部", "target": "二專部", "weight": null, "allowed": false },
+      { "source": "四技進修部", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "四技進修部", "target": "二技日間部", "weight": null, "allowed": false },
+      { "source": "四技進修部", "target": "日間碩士班", "weight": null, "allowed": false },
+      { "source": "四技進修部", "target": "博士班", "weight": null, "allowed": false },
+      { "source": "四技進修部", "target": "二專進修部", "weight": 2.0, "allowed": true },
+      { "source": "四技進修部", "target": "二技進修部", "weight": 2.0, "allowed": true },
+      { "source": "四技進修部", "target": "碩士在職專班", "weight": 0.31, "allowed": true },
+      { "source": "二技進修部", "target": "五專部", "weight": 1.5, "allowed": true },
+      { "source": "二技進修部", "target": "二專部", "weight": null, "allowed": false },
+      { "source": "二技進修部", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "二技進修部", "target": "二技日間部", "weight": null, "allowed": false },
+      { "source": "二技進修部", "target": "日間碩士班", "weight": null, "allowed": false },
+      { "source": "二技進修部", "target": "博士班", "weight": null, "allowed": false },
+      { "source": "二技進修部", "target": "二專進修部", "weight": 1.0, "allowed": true },
+      { "source": "二技進修部", "target": "四技進修部", "weight": 0.5, "allowed": true },
+      { "source": "二技進修部", "target": "碩士在職專班", "weight": 0.16, "allowed": true },
+      { "source": "碩士在職專班", "target": "五專部", "weight": null, "allowed": false },
+      { "source": "碩士在職專班", "target": "二專部", "weight": null, "allowed": false },
+      { "source": "碩士在職專班", "target": "四技日間部", "weight": null, "allowed": false },
+      { "source": "碩士在職專班", "target": "二技日間部", "weight": null, "allowed": false },
+      { "source": "碩士在職專班", "target": "日間碩士班", "weight": null, "allowed": false },
+      { "source": "碩士在職專班", "target": "博士班", "weight": null, "allowed": false },
+      { "source": "碩士在職專班", "target": "二專進修部", "weight": null, "allowed": false },
+      { "source": "碩士在職專班", "target": "四技進修部", "weight": 3.13, "allowed": true },
+      { "source": "碩士在職專班", "target": "二技進修部", "weight": 6.25, "allowed": true }
     ];
 
     const sourceSelect = document.getElementById('sourceSelect');
@@ -95,9 +157,10 @@
     const resultBox = document.getElementById('resultBox');
     const allowStatus = document.getElementById('allowStatus');
     const weightVal = document.getElementById('weightVal');
-    const calcResult = document.getElementById('calcResult');
+    const rawResult = document.getElementById('rawResult');
+    const floorResult = document.getElementById('floorResult');
 
-    // 初始化轉出選單
+    // 初始化轉出選單（去重）
     const sourceList = [...new Set(conversionData.map(item => item.source))];
     sourceList.forEach(src => {
       const opt = document.createElement('option');
@@ -106,7 +169,7 @@
       sourceSelect.appendChild(opt);
     });
 
-    // 當轉出學制改變時
+    // 當選擇轉出學制時，動態更新轉入學制下拉選單
     sourceSelect.addEventListener('change', () => {
       const selectedSource = sourceSelect.value;
       targetSelect.innerHTML = '<option value="">-- 請選擇轉入學制 --</option>';
@@ -121,7 +184,7 @@
       targets.forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.target;
-        opt.textContent = `${t.target} (${t.allowed ? '可轉換' : '不可轉換'})`;
+        opt.textContent = `${t.target} (${t.allowed ? '允許轉換' : '不允許轉換'})`;
         targetSelect.appendChild(opt);
       });
 
@@ -129,7 +192,6 @@
       calculate();
     });
 
-    // 監聽變更事件以即時計算
     targetSelect.addEventListener('change', calculate);
     inputQuota.addEventListener('input', calculate);
 
@@ -147,23 +209,27 @@
       resultBox.classList.remove('hidden');
 
       if (!rule || !rule.allowed) {
-        allowStatus.textContent = "不允許轉換";
+        allowStatus.textContent = "不允許轉換 ❌";
         allowStatus.className = "font-bold text-red-600";
         weightVal.textContent = "-";
-        calcResult.textContent = "0";
+        rawResult.textContent = "0";
+        floorResult.textContent = "0";
         return;
       }
 
-      allowStatus.textContent = "允許轉換";
+      allowStatus.textContent = "允許轉換 ⭕";
       allowStatus.className = "font-bold text-green-600";
       weightVal.textContent = rule.weight;
 
       if (!isNaN(quota) && quota > 0) {
-        // 計算轉換結果（可根據學校需求選擇是否要 Math.floor 無條件捨去小數點）
-        const converted = (quota * rule.weight).toFixed(2);
-        calcResult.textContent = converted;
+        const exact = quota * rule.weight;
+        // 精確值保留至小數點後 2 位
+        rawResult.textContent = exact % 1 === 0 ? exact : exact.toFixed(2);
+        // 依據教育部規範：無條件捨去至整數
+        floorResult.textContent = Math.floor(exact);
       } else {
-        calcResult.textContent = "0";
+        rawResult.textContent = "0";
+        floorResult.textContent = "0";
       }
     }
   </script>
